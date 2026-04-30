@@ -1,18 +1,5 @@
-/**
- * Thin wrapper around the Spire Codex public API.
- * Docs: https://spire-codex.com/docs
- *
- * Every function fetches the full list for its entity type, then
- * performs a case-insensitive substring match on the name field.
- * The API is rate-limited to 60 req/min/IP and responses are
- * cached for 300s on the server side, so this is fine for a bot.
- */
-
 const BASE = "https://spire-codex.com/api";
-
-// ---------------------------------------------------------------------------
-// Generic helpers
-// ---------------------------------------------------------------------------
+const ROOT = "https://spire-codex.com";
 
 async function fetchJSON(path) {
     const res = await fetch(`${BASE}${path}`);
@@ -21,79 +8,88 @@ async function fetchJSON(path) {
 }
 
 /**
- * Find the best match for `query` in `items` by comparing against
- * item.name (case-insensitive). Exact matches win; otherwise the
- * first item whose name contains the query wins.
+ * Strip / convert STS2 inline formatting markers.
+ *  - "NL"             -> newline
+ *  - [color]x[/color] -> **x** (bold)
+ *  - [E], [R], etc.   -> bracketless
  */
-function bestMatch(items, query) {
-    if (!items || !items.length) return null;
-    const q = query.toLowerCase().trim();
-
-    // Exact match first
-    const exact = items.find((i) => i.name?.toLowerCase() === q);
-    if (exact) return exact;
-
-    // Substring / "starts with" match
-    const startsWith = items.find((i) => i.name?.toLowerCase().startsWith(q));
-    if (startsWith) return startsWith;
-
-    // Contains
-    const contains = items.find((i) => i.name?.toLowerCase().includes(q));
-    return contains ?? null;
+export function formatText(text) {
+    if (!text) return "";
+    return text
+        .replace(/\s*NL\s*/g, "\n")
+        .replace(/$$([a-zA-Z_]+)$$([\s\S]*?)$$\/\1$$/g, "**\$2**")
+        .replace(/$$([^$$]+)\]/g, "\$1")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
 }
 
-// ---------------------------------------------------------------------------
-// Public API functions
+/**
+ * Robust name match. Tries: exact → starts-with → contains → token-equals.
+ * Token-equals handles names like "Vakuu, the Wanderer" matching "Vakuu".
+ */
+function bestMatch(items, query) {
+    if (!items?.length) return null;
+    const q = query.toLowerCase().trim();
+
+    const lc = (i) => i.name?.toLowerCase() ?? "";
+
+    return (
+        items.find((i) => lc(i) === q) ??
+        items.find((i) => lc(i).startsWith(q)) ??
+        items.find((i) => lc(i).includes(q)) ??
+        items.find((i) => lc(i).split(/[^a-z0-9]+/).includes(q)) ??
+        null
+    );
+}
+
+const imageUrl = (path) => (path ? (path.startsWith("http") ? path : `${ROOT}${path}`) : null);
+
 // ---------------------------------------------------------------------------
 
-/**
- * Look up a card by name.
- * Returns { name, cost, rarity, type, description, image_url } or null.
- */
 export async function findCard(query) {
     const cards = await fetchJSON("/cards");
-    if (!cards) return null;
     const card = bestMatch(cards, query);
     if (!card) return null;
+
+    // Append keywords to description, e.g. "...your Hand. Exhaust"
+    let description = formatText(card.description ?? card.description_raw ?? "");
+    const keywords = card.keywords ?? [];
+    if (keywords.length) {
+        const kwText = keywords
+            .map((k) => (typeof k === "string" ? k : k.name ?? ""))
+            .filter(Boolean)
+            .map((k) => k.charAt(0).toUpperCase() + k.slice(1))
+            .join(". ");
+        if (kwText) description = `${description.replace(/\.?\s*$/, ".")} ${kwText}`.trim();
+    }
 
     return {
         name: card.name,
         cost: card.cost ?? "?",
         rarity: card.rarity ?? "Unknown",
         type: card.type ?? "",
-        description: card.description ?? card.description_raw ?? "No description.",
+        description,
         character: card.character ?? null,
-        image_url: card.image ? `${BASE.replace("/api", "")}${card.image}` : null,
-        keywords: card.keywords ?? [],
+        image_url: imageUrl(card.image),
     };
 }
 
-/**
- * Look up a relic by name.
- * Returns { name, description, rarity, image_url } or null.
- */
 export async function findRelic(query) {
     const relics = await fetchJSON("/relics");
-    if (!relics) return null;
     const relic = bestMatch(relics, query);
     if (!relic) return null;
 
     return {
         name: relic.name,
-        description: relic.description ?? "No description.",
+        description: formatText(relic.description ?? ""),
         rarity: relic.rarity ?? null,
         character: relic.character ?? relic.pool ?? null,
-        image_url: relic.image ? `${BASE.replace("/api", "")}${relic.image}` : null,
+        image_url: imageUrl(relic.image),
     };
 }
 
-/**
- * Look up an ancient by name.
- * Returns { name, epithet, relics, floors, image_url } or null.
- */
 export async function findAncient(query) {
     const ancients = await fetchJSON("/ancients");
-    if (!ancients) return null;
     const ancient = bestMatch(ancients, query);
     if (!ancient) return null;
 
@@ -102,24 +98,19 @@ export async function findAncient(query) {
         epithet: ancient.epithet ?? null,
         relics: ancient.relics ?? ancient.relic_offerings ?? [],
         floors: ancient.floors ?? ancient.floor ?? null,
-        image_url: ancient.image ? `${BASE.replace("/api", "")}${ancient.image}` : null,
+        image_url: imageUrl(ancient.image),
     };
 }
 
-/**
- * Look up a potion by name.
- * Returns { name, description, rarity, image_url } or null.
- */
 export async function findPotion(query) {
     const potions = await fetchJSON("/potions");
-    if (!potions) return null;
     const potion = bestMatch(potions, query);
     if (!potion) return null;
 
     return {
         name: potion.name,
-        description: potion.description ?? "No description.",
+        description: formatText(potion.description ?? ""),
         rarity: potion.rarity ?? null,
-        image_url: potion.image ? `${BASE.replace("/api", "")}${potion.image}` : null,
+        image_url: imageUrl(potion.image),
     };
 }
