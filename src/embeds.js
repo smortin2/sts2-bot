@@ -1,72 +1,106 @@
-const RARITY_COLORS = {
-    common: 0x95a5a6,    // gray
-    uncommon: 0x3498db,  // blue
-    rare: 0xf1c40f,      // gold
-    basic: 0x95a5a6,
-    starter: 0x95a5a6,
-    special: 0x9b59b6,   // purple fallback
-};
-
-const rarityColor = (rarity, fallback = 0x4e8df5) =>
-    RARITY_COLORS[rarity?.toLowerCase?.()] ?? fallback;
-
-const FOOTER = { text: "Data from Spire Codex · spire-codex.com" };
-
-// ---------------------------------------------------------------------------
-
-const RARITY_MAP = {
+const RARITY_META = {
     common: { abbr: "C", color: 0x95a5a6 },
     uncommon: { abbr: "U", color: 0x3498db },
     rare: { abbr: "R", color: 0xf1c40f },
     basic: { abbr: "B", color: 0x95a5a6 },
     starter: { abbr: "S", color: 0x95a5a6 },
-    curse: { abbr: "X", color: 0x9b59b6 },
+    special: { abbr: "?", color: 0x9b59b6 },
     quest: { abbr: "Q", color: 0xe67e22 },
+    curse: { abbr: "X", color: 0x9b59b6 },
 };
+
+const FOOTER = {
+    text: "Data from Spire Codex · spire-codex.com",
+};
+
+function rarityMeta(rarity, fallbackColor = 0x4e8df5) {
+    const key = String(rarity ?? "").toLowerCase();
+    return RARITY_META[key] ?? { abbr: "?", color: fallbackColor };
+}
+
+function hasValue(value) {
+    return value !== null && value !== undefined && value !== "";
+}
 
 export function cardEmbed(card) {
     if (!card) return null;
-    const r = RARITY_MAP[card.rarity?.toLowerCase?.()] ?? { abbr: "?", color: 0x4e8df5 };
 
+    const meta = rarityMeta(card.rarity);
     const fields = [];
 
-    // Logic: Hide Cost if -1
-    if (card.cost !== -1) {
-        fields.push({ name: "Cost", value: `${card.cost}`, inline: true });
+    if (hasValue(card.cost) && card.cost !== -1) {
+        fields.push({
+            name: "Cost",
+            value: String(card.cost),
+            inline: true,
+        });
     }
 
-    // Conditional Star cost
-    if (card.stars) {
-        fields.push({ name: "Stars", value: `${card.stars}`, inline: true });
+    if (hasValue(card.stars)) {
+        fields.push({
+            name: "Stars",
+            value: String(card.stars),
+            inline: true,
+        });
     }
 
-    fields.push({ name: "Type", value: card.type || "—", inline: true });
+    if (hasValue(card.type)) {
+        fields.push({
+            name: "Type",
+            value: String(card.type),
+            inline: true,
+        });
+    }
+
+    if (hasValue(card.character)) {
+        fields.push({
+            name: "Character",
+            value: String(card.character),
+            inline: true,
+        });
+    }
 
     const embed = {
-        title: `${card.name} (${r.abbr})`,
-        description: card.description,
-        color: r.color,
+        title: `${card.name} (${meta.abbr})`,
+        description: card.description || "No description.",
+        color: meta.color,
         fields,
         footer: FOOTER,
     };
-    if (card.image_url) embed.thumbnail = { url: card.image_url };
+
+    if (card.image_url) {
+        embed.thumbnail = { url: card.image_url };
+    }
+
     return embed;
 }
 
 export function relicEmbed(relic) {
     if (!relic) return null;
-    const title = relic.rarity ? `(${relic.rarity}) ${relic.name}` : relic.name;
+
+    const meta = rarityMeta(relic.rarity, 0xf5a623);
+    const fields = [];
+
+    if (hasValue(relic.character)) {
+        fields.push({
+            name: "Pool",
+            value: String(relic.character),
+            inline: true,
+        });
+    }
 
     const embed = {
-        title,
-        description: relic.description,
-        color: rarityColor(relic.rarity, 0xf5a623),
+        title: relic.name,
+        description: relic.description || "No description.",
+        color: meta.color,
+        fields,
         footer: FOOTER,
     };
-    if (relic.character) {
-        embed.fields = [{ name: "Pool", value: relic.character, inline: true }];
+
+    if (relic.image_url) {
+        embed.thumbnail = { url: relic.image_url };
     }
-    if (relic.image_url) embed.thumbnail = { url: relic.image_url };
+
     return embed;
 }
 
@@ -74,21 +108,29 @@ export function ancientEmbed(ancient) {
     if (!ancient) return null;
 
     const fields = [];
-    if (ancient.epithet) {
-        fields.push({ name: "Epithet", value: ancient.epithet, inline: false });
+
+    if (hasValue(ancient.epithet)) {
+        fields.push({
+            name: "Epithet",
+            value: String(ancient.epithet),
+            inline: false,
+        });
     }
-    if (ancient.relics?.length) {
-        const relicNames = ancient.relics
-            .map((r) => (typeof r === "string" ? r : r.name ?? ""))
-            .filter(Boolean)
-            .join("\n• ");
-        if (relicNames) {
-            fields.push({ name: "Relic Offerings", value: `• ${relicNames}`, inline: false });
-        }
+
+    if (Array.isArray(ancient.relics) && ancient.relics.length) {
+        fields.push({
+            name: "Relic Offerings",
+            value: `• ${ancient.relics.join("\n• ")}`,
+            inline: false,
+        });
     }
-    if (ancient.floors) {
-        const floorsStr = Array.isArray(ancient.floors) ? ancient.floors.join(", ") : `${ancient.floors}`;
-        fields.push({ name: "Appears On Floor(s)", value: floorsStr, inline: true });
+
+    if (Array.isArray(ancient.floors) && ancient.floors.length) {
+        fields.push({
+            name: "Floor(s)",
+            value: ancient.floors.join(", "),
+            inline: true,
+        });
     }
 
     const embed = {
@@ -97,20 +139,29 @@ export function ancientEmbed(ancient) {
         fields,
         footer: FOOTER,
     };
-    if (ancient.image_url) embed.thumbnail = { url: ancient.image_url };
+
+    if (ancient.image_url) {
+        embed.thumbnail = { url: ancient.image_url };
+    }
+
     return embed;
 }
 
 export function potionEmbed(potion) {
     if (!potion) return null;
-    const title = potion.rarity ? `(${potion.rarity}) ${potion.name}` : potion.name;
+
+    const meta = rarityMeta(potion.rarity, 0x2ecc71);
 
     const embed = {
-        title,
-        description: potion.description,
-        color: rarityColor(potion.rarity, 0x2ecc71),
+        title: potion.name,
+        description: potion.description || "No description.",
+        color: meta.color,
         footer: FOOTER,
     };
-    if (potion.image_url) embed.thumbnail = { url: potion.image_url };
+
+    if (potion.image_url) {
+        embed.thumbnail = { url: potion.image_url };
+    }
+
     return embed;
 }
