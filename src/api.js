@@ -3,6 +3,15 @@ import { pickFirst, arrayify, formatText, extractString, bestMatch } from "./hel
 const BASE = "https://spire-codex.com/api";
 const ROOT = "https://spire-codex.com";
 
+let validCharacters = null;
+async function getValidCharacters() {
+    if (!validCharacters) {
+        const items = await fetchJSON("/characters");
+        validCharacters = (items || []).map(c => extractString(c)).filter(Boolean);
+    }
+    return validCharacters;
+}
+
 async function fetchJSON(path, params = {}) {
     const url = new URL(`${BASE}${path}`);
     for (const [key, value] of Object.entries(params)) {
@@ -45,14 +54,31 @@ export async function findCard(query) {
     const cost = card.is_x_cost ? "X" : pickFirst(card.cost, card.base_cost);
     const stars = card.is_x_star_cost ? "X" : pickFirst(card.star_cost, card.stars, card.starCost, card.base_star_cost);
 
+    // Validate and capitalize character against the API
+    const rawChar = extractString(pickFirst(card.character, card.color, card.pool));
+    let finalChar = null;
+    if (rawChar) {
+        const chars = await getValidCharacters();
+
+        // Strip "the " from the start of the string for comparison
+        const normalizedRaw = rawChar.toLowerCase().replace(/^the\s+/, "");
+        const match = chars.find(c => c.toLowerCase().replace(/^the\s+/, "") === normalizedRaw);
+
+        if (match) {
+            // Strip 'The ' from the matched API string and properly Title Case it
+            const cleanMatch = match.replace(/^The\s+/i, "");
+            finalChar = cleanMatch.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+        }
+    }
+
     return {
         name: pickFirst(card.name, card.title),
         cost: cost ?? null,
         stars: card.is_x_star_cost || stars != null ? stars : null,
-        rarity: extractString(pickFirst(card.rarity, card.tier)) || "Unknown",
+        rarity: pickFirst(extractString(card.rarity), extractString(card.tier)) || "Unknown",
         type: extractString(pickFirst(card.type)) || "",
         description,
-        character: extractString(pickFirst(card.character, card.color, card.pool)) || null,
+        character: finalChar, // Now successfully evaluates 'silent' to 'Silent'
         image_url: extractImage(card),
     };
 }

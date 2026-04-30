@@ -29,7 +29,7 @@ async function test_relic(name) {
     console.log(JSON.stringify(response, null, 2));
 }
 
-// test_card('curse of the bell')
+test_card('blade dance')
 // test_ancient('vakuu')
 // test_potion('foul potion')
 // test_relic('snecko eye')

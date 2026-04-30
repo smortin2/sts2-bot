@@ -18,22 +18,35 @@ function assert(condition, message, payload = null) {
 async function test_cards() {
     console.log("\n--- Testing Cards ---");
 
+    // Blade Dance
     const bdCard = await findCard('Blade Dance');
     const bdEmbed = cardEmbed(bdCard);
     assert(bdEmbed.title.includes('(C)'), 'Blade Dance is rarity common (C)', bdEmbed.title);
     assert(!bdCard.description.includes('['), 'Blade Dance has no brackets in the description', bdCard.description);
+
     const bdFields = bdEmbed.fields.map(f => f.name.toLowerCase());
     assert(['cost', 'type', 'character'].every(f => bdFields.includes(f)), 'Blade Dance has fields cost, type, character', bdFields);
 
+    const bdChar = bdEmbed.fields.find(f => f.name === 'Character');
+    assert(bdChar && bdChar.value === 'Silent', 'Blade Dance character field is properly capitalized as "Silent"', bdChar);
+
+    // Stardust
     const sdCard = await findCard('Stardust');
     const sdEmbed = cardEmbed(sdCard);
     const starField = sdEmbed.fields.find(f => f.name.toLowerCase() === 'stars');
     assert(starField?.value === 'X', 'Stardust has field "stars" with value X', starField);
 
+    // Curse of the Bell
     const bellCard = await findCard('Curse of the Bell');
     const bellEmbed = cardEmbed(bellCard);
     assert(bellEmbed.title.includes('(X)'), 'Curse of the Bell is rarity curse (X)', bellEmbed.title);
     assert(bellCard.description === 'Unplayable. Eternal.', 'Curse of the Bell renders keywords correctly in description', bellCard.description);
+    assert(!bellEmbed.fields.some(f => f.name === 'Character'), 'Curse of the Bell does not render a Character field', bellEmbed.fields);
+
+    // Prep Time
+    const prepCard = await findCard('Prep Time');
+    const prepEmbed = cardEmbed(prepCard);
+    assert(!prepEmbed.fields.some(f => f.name === 'Character'), 'Prep Time does not render a Character field', prepEmbed.fields);
 }
 
 async function test_potions() {
