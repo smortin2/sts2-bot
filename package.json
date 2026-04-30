@@ -1,0 +1,18 @@
+{
+  "name": "sts2-discord-bot",
+  "version": "1.0.0",
+  "description": "Slay the Spire 2 Discord bot powered by Spire Codex API",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "publish": "wrangler deploy",
+    "register": "node src/register.js"
+  },
+  "dependencies": {
+    "discord-interactions": "^4.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

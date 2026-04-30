@@ -1,0 +1,9 @@
+name = "sts2-discord-bot"
+main = "src/server.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Secrets are set via `wrangler secret put <NAME>` in cloudflare.
+#   DISCORD_PUBLIC_KEY
+#   DISCORD_APPLICATION_ID
+#   DISCORD_TOKEN
