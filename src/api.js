@@ -99,10 +99,17 @@ export async function findAncient(query) {
         floors = [String(rawFloors)];
     }
 
+    // Resolve raw IDs to actual Relic names
+    const rawRelics = extractAncientRelics(ancient);
+    const resolvedRelics = await Promise.all(rawRelics.map(async (id) => {
+        const relic = await findRelic(id);
+        return relic ? relic.name : id; // Fall back to ID if lookup fails
+    }));
+
     return {
         name: pickFirst(ancient.name, ancient.title),
         epithet: pickFirst(ancient.epithet, ancient.subtitle, ancient.tagline, null),
-        relics: extractAncientRelics(ancient),
+        relics: resolvedRelics, // Now contains properly cased names like 'Fiddle'
         floors,
         image_url: extractImage(ancient),
     };

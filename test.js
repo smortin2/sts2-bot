@@ -78,6 +78,7 @@ async function test_ancients() {
     assert(!vakuuEmbed.fields.some(f => f.name.toLowerCase() === 'epithet'), 'Vakuu does not have an standalone epithet field', vakuuEmbed.fields);
     assert(vakuuEmbed.color && vakuuEmbed.footer && vakuuEmbed.thumbnail, 'Vakuu has color, footer, thumbnail');
     assert(vakuuEmbed.fields.some(f => f.name === 'Relic Offerings'), 'Vakuu has relic offerings field', vakuuEmbed.fields);
+    assert(vakuu.relics.includes('Fiddle'), "Vakuu contains exactly the string 'Fiddle' (case sensitive)", vakuu.relics);
 }
 
 async function runAll() {
