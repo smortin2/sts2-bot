@@ -14,25 +14,39 @@ const FOOTER = { text: "Data from Spire Codex · spire-codex.com" };
 
 // ---------------------------------------------------------------------------
 
-const rarityAbbr = (rarity) => {
-    const map = { common: "C", uncommon: "U", rare: "R", basic: "B", starter: "S" };
-    return map[rarity?.toLowerCase?.()] ?? "?";
+const RARITY_MAP = {
+    common: { abbr: "C", color: 0x95a5a6 },
+    uncommon: { abbr: "U", color: 0x3498db },
+    rare: { abbr: "R", color: 0xf1c40f },
+    basic: { abbr: "B", color: 0x95a5a6 },
+    starter: { abbr: "S", color: 0x95a5a6 },
+    curse: { abbr: "X", color: 0x9b59b6 },
+    quest: { abbr: "Q", color: 0xe67e22 },
 };
 
 export function cardEmbed(card) {
     if (!card) return null;
+    const r = RARITY_MAP[card.rarity?.toLowerCase?.()] ?? { abbr: "?", color: 0x4e8df5 };
 
-    // Change title format to "Name (Rarity)"
-    const title = `${card.name} (${rarityAbbr(card.rarity)})`;
+    const fields = [];
+
+    // Logic: Hide Cost if -1
+    if (card.cost !== -1) {
+        fields.push({ name: "Cost", value: `${card.cost}`, inline: true });
+    }
+
+    // Conditional Star cost
+    if (card.stars) {
+        fields.push({ name: "Stars", value: `${card.stars}`, inline: true });
+    }
+
+    fields.push({ name: "Type", value: card.type || "—", inline: true });
 
     const embed = {
-        title: title,
+        title: `${card.name} (${r.abbr})`,
         description: card.description,
-        color: rarityColor(card.rarity),
-        fields: [
-            { name: "Cost", value: `${card.cost}`, inline: true },
-            { name: "Type", value: card.type || "—", inline: true },
-        ],
+        color: r.color,
+        fields,
         footer: FOOTER,
     };
     if (card.image_url) embed.thumbnail = { url: card.image_url };

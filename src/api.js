@@ -7,20 +7,13 @@ async function fetchJSON(path) {
     return res.json();
 }
 
-/**
- * Strip / convert STS2 inline formatting markers.
- *  - "NL"             -> newline
- *  - [color]x[/color] -> **x** (bold)
- *  - [E], [R], etc.   -> bracketless
- */
 export function formatText(text) {
     if (!text) return "";
     return text
         .replace(/\s*NL\s*/g, "\n")
-        // 1. Remove color tags completely: [gold]text[/gold] -> text
+        // Removes [anything]...[/anything] OR [anything]
         .replace(/$$[a-zA-Z_]+$$([\s\S]*?)$$\/[a-zA-Z_]+$$/g, "\$1")
-        // 2. Remove other bracketed tags: [E] -> E, [1] -> 1
-        .replace(/$$([^$$]+)\]/g, "\$1")
+        .replace(/$$[a-zA-Z_]+$$/g, "")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 }
@@ -53,21 +46,23 @@ export async function findCard(query) {
     const card = bestMatch(cards, query);
     if (!card) return null;
 
-    // Append keywords to description, e.g. "...your Hand. Exhaust"
     let description = formatText(card.description ?? card.description_raw ?? "");
     const keywords = card.keywords ?? [];
+
+    // Append keywords with period
     if (keywords.length) {
         const kwText = keywords
             .map((k) => (typeof k === "string" ? k : k.name ?? ""))
             .filter(Boolean)
             .map((k) => k.charAt(0).toUpperCase() + k.slice(1))
             .join(". ");
-        if (kwText) description = `${description.replace(/\.?\s*$/, ".")} ${kwText}`.trim();
+        if (kwText) description = `${description.replace(/\.?\s*$/, ".")} ${kwText}.`.trim();
     }
 
     return {
         name: card.name,
         cost: card.cost ?? "?",
+        stars: card.stars ?? null, // Assuming API provides this
         rarity: card.rarity ?? "Unknown",
         type: card.type ?? "",
         description,
