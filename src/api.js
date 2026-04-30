@@ -17,7 +17,9 @@ export function formatText(text) {
     if (!text) return "";
     return text
         .replace(/\s*NL\s*/g, "\n")
-        .replace(/$$([a-zA-Z_]+)$$([\s\S]*?)$$\/\1$$/g, "**\$2**")
+        // 1. Remove color tags completely: [gold]text[/gold] -> text
+        .replace(/$$[a-zA-Z_]+$$([\s\S]*?)$$\/[a-zA-Z_]+$$/g, "\$1")
+        // 2. Remove other bracketed tags: [E] -> E, [1] -> 1
         .replace(/$$([^$$]+)\]/g, "\$1")
         .replace(/\n{3,}/g, "\n\n")
         .trim();

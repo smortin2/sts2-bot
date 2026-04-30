@@ -14,22 +14,25 @@ const FOOTER = { text: "Data from Spire Codex · spire-codex.com" };
 
 // ---------------------------------------------------------------------------
 
+const rarityAbbr = (rarity) => {
+    const map = { common: "C", uncommon: "U", rare: "R", basic: "B", starter: "S" };
+    return map[rarity?.toLowerCase?.()] ?? "?";
+};
+
 export function cardEmbed(card) {
     if (!card) return null;
 
-    const fields = [
-        { name: "Cost", value: `${card.cost}`, inline: true },
-        { name: "Type", value: card.type || "—", inline: true },
-    ];
-    if (card.character) {
-        fields.push({ name: "Character", value: card.character, inline: true });
-    }
+    // Change title format to "Name (Rarity)"
+    const title = `${card.name} (${rarityAbbr(card.rarity)})`;
 
     const embed = {
-        title: `(${card.rarity}) ${card.name}`,
+        title: title,
         description: card.description,
         color: rarityColor(card.rarity),
-        fields,
+        fields: [
+            { name: "Cost", value: `${card.cost}`, inline: true },
+            { name: "Type", value: card.type || "—", inline: true },
+        ],
         footer: FOOTER,
     };
     if (card.image_url) embed.thumbnail = { url: card.image_url };
